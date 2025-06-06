@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";    
 import Message  from "../models/message.model.js"
 import cloudinary from "../lib/cloudinary.js";
+import { getRecieverSocketId, io } from "../lib/socket.js";
 
 
 
@@ -24,7 +25,7 @@ export const getMessages = async(req,res)=>{
         const {id: userToChatId} = req.params
         const senderId = req.user._id
 
-        const messages = await Message.find({
+        const message = await Message.find({
             $or:[
                 {senderId : senderId,recieverId:userToChatId},
                 {senderId : userToChatId,recieverId: senderId},
@@ -40,12 +41,16 @@ export const getMessages = async(req,res)=>{
 
 export const sendMessage = async(req,res)=>{
     try {
-        const {text,image} = req.body;
+       const { text } = req.body; 
+const image = req.file; 
+ 
+       console.log(image);
         const {id: recieverId}= req.params
         const senderId = req.user._id
         let imageUrl;
         if(image){
-            const uploadResponse = await cloudinary.uploader.upload(image);
+              const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+                   const uploadResponse = await cloudinary.uploader.upload(base64Image)
             imageUrl = uploadResponse.secure_url
         }
 
@@ -56,6 +61,11 @@ export const sendMessage = async(req,res)=>{
             image:imageUrl
         }) 
         await newMessage.save()
+
+        const recieverSocketId = getRecieverSocketId(recieverId);
+        if(recieverSocketId){
+            io.to(recieverSocketId).emit("newMessage",newMessage)
+        }
 
         res.status(201).json(newMessage)
         

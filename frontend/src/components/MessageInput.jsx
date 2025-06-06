@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
+ const [image,setImage] = useState()
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const { sendMessage } = useChatStore();
@@ -15,6 +16,8 @@ const MessageInput = () => {
       toast.error("Please select an image file");
       return;
     }
+    setImage(file)
+ 
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -23,23 +26,26 @@ const MessageInput = () => {
     reader.readAsDataURL(file);
   };
 
+
   const removeImage = () => {
     setImagePreview(null);
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
+      const formData = new FormData();
+  formData.append('image', image);
+  formData.append('text',text.trim())
 
     try {
-      await sendMessage({
-        text: text.trim(),
-        image: imagePreview,
-      });
+      await sendMessage(formData);
 
       // Clear form
       setText("");
+      setImage(null)
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
